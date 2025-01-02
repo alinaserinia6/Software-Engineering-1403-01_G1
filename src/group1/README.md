@@ -1,7 +1,5 @@
 # Chat microservice
 
-Here is an edited version of your text for clarity and flow:
-
 This project focuses on the design and development of a two-person chat system tailored for language learners. Its primary goal is to create an interactive platform that allows users to enhance their language skills through both written and voice messages. The system is inspired by real-world scenarios and is based on the actual needs of learners, aiming to foster greater interaction and collaboration between users.
 
 In addition to the core features, the platform includes the creation of chat groups to encourage more dynamic interactions. This feature enhances communication efficiency, allowing users to connect in a more meaningful way.
