@@ -20,6 +20,4 @@ the team members are:
 
 4. Ashkan Moshfeg haghighi
 
-
-
-Ya Ali 
+Ya Ali
