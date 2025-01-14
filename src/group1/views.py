@@ -1,3 +1,4 @@
+# views.py
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -74,6 +75,14 @@ def send_private_message(request):
     message = Message.objects.create(sender=request.user, private_chat=chat, text=text)
     return JsonResponse({'message': 'Message sent', 'message_id': message.id})
 
+@login_required
+def get_single_chat(request, chat_id):
+    chat = PrivateChat.objects.filter(id=chat_id, user1=request.user) | PrivateChat.objects.filter(id=chat_id, user2=request.user)
+    if not chat.exists():
+        raise PermissionDenied("You are not part of this chat.")
+    messages = Message.objects.filter(private_chat=chat.first()).values('id', 'sender__username', 'text', 'created_at')
+    return JsonResponse({'messages': list(messages)})
+
 # Group Chat APIs
 @login_required
 def create_group(request):
@@ -137,6 +146,14 @@ def send_partner_request(request):
     FriendRequest.objects.create(sender=request.user, receiver=receiver)
     return JsonResponse({'message': 'Request sent'})
 
+@login_required
+def accept_partner_request(request):
+    request_id = request.POST.get('request_id')
+    friend_request = FriendRequest.objects.get(id=request_id, receiver=request.user)
+    friend_request.status = 'accepted'
+    friend_request.save()
+    return JsonResponse({'message': 'Friend request accepted'})
+
 # Reporting and Blocking
 @login_required
 def report_user(request):
@@ -152,3 +169,70 @@ def block_user(request):
     blocked_user = User.objects.get(id=blocked_user_id)
     Block.objects.create(blocker=request.user, blocked=blocked_user)
     return JsonResponse({'message': 'User blocked'})
+
+# User Retrieval APIs
+@login_required
+def get_all_users(request):
+    users = User.objects.all().values('id', 'username', 'profile__avatar', 'profile__phone_number')
+    return JsonResponse({'users': list(users)})
+
+@login_required
+def get_single_user(request, user_id):
+    user = User.objects.filter(id=user_id).values('id', 'username', 'profile__avatar', 'profile__phone_number', 'profile__mother_language', 'profile__target_language').first()
+    if not user:
+        return JsonResponse({'error': 'User not found'}, status=404)
+    return JsonResponse({'user': user})
+
+# Chat Retrieval APIs
+@login_required
+def get_all_chats(request):
+    chats = PrivateChat.objects.filter(user1=request.user) | PrivateChat.objects.filter(user2=request.user)
+    data = [{'id': chat.id, 'user1': chat.user1.username, 'user2': chat.user2.username} for chat in chats]
+    return JsonResponse({'chats': data})
+
+# Additional APIs
+@login_required
+def get_user_avatar(request, user_id):
+    user_profile = UserProfile.objects.filter(user_id=user_id).first()
+    if not user_profile:
+        return JsonResponse({'error': 'User not found'}, status=404)
+    return JsonResponse({'avatar': user_profile.avatar.url if user_profile.avatar else None})
+
+@login_required
+def get_user_details(request, user_id):
+    user_profile = UserProfile.objects.filter(user_id=user_id).first()
+    if not user_profile:
+        return JsonResponse({'error': 'User not found'}, status=404)
+    return JsonResponse({
+        'username': user_profile.user.username,
+        'avatar': user_profile.avatar.url if user_profile.avatar else None,
+        'phone_number': user_profile.phone_number
+    })
+
+# Message APIs
+@login_required
+def delete_message(request, message_id):
+    try:
+        message = Message.objects.get(id=message_id)
+        if message.sender != request.user:
+            raise PermissionDenied("You are not authorized to delete this message.")
+        message.delete()
+        return JsonResponse({'message': 'Message deleted successfully'})
+    except Message.DoesNotExist:
+        return JsonResponse({'error': 'Message not found'}, status=404)
+
+@login_required
+def edit_message(request, message_id):
+    try:
+        message = Message.objects.get(id=message_id)
+        if message.sender != request.user:
+            raise PermissionDenied("You are not authorized to edit this message.")
+        if request.method == 'POST':
+            new_text = request.POST.get('text', '')
+            if not new_text:
+                return JsonResponse({'error': 'Message text cannot be empty'}, status=400)
+            message.text = new_text
+            message.save()
+            return JsonResponse({'message': 'Message edited successfully'})
+    except Message.DoesNotExist:
+        return JsonResponse({'error': 'Message not found'}, status=404)

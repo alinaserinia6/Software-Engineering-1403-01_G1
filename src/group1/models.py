@@ -10,18 +10,18 @@ class UserProfile(models.Model):
     language_level = models.CharField(
         max_length=2,
         choices=[
-            ("A1", "Beginner"), 
-            ("A2", "Elementary"), 
-            ("B1", "Intermediate"), 
-            ("B2", "Upper Intermediate"), 
-            ("C1", "Advanced"), 
+            ("A1", "Beginner"),
+            ("A2", "Elementary"),
+            ("B1", "Intermediate"),
+            ("B2", "Upper Intermediate"),
+            ("C1", "Advanced"),
             ("C2", "Proficient")
         ],
     )
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
     status = models.CharField(
-        max_length=10, 
-        choices=[("online", "Online"), ("offline", "Offline")], 
+        max_length=10,
+        choices=[("online", "Online"), ("offline", "Offline")],
         default="offline"
     )
 
@@ -105,8 +105,8 @@ class FriendRequest(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_requests")
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_requests")
     status = models.CharField(
-        max_length=10, 
-        choices=[("pending", "Pending"), ("accepted", "Accepted"), ("rejected", "Rejected")], 
+        max_length=10,
+        choices=[("pending", "Pending"), ("accepted", "Accepted"), ("rejected", "Rejected")],
         default="pending"
     )
     created_at = models.DateTimeField(auto_now_add=True)
