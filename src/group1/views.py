@@ -7,6 +7,11 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from .models import *
 from django.core.exceptions import PermissionDenied
+from .serializers import UserProfileSerializer, PrivateChatSerializer, MessageSerializer, GroupCreateSerializer, GroupMessageSerializer, AddGroupMemberSerializer, RemoveGroupMemberSerializer, LanguagePartnerSearchSerializer, UserSerializer, LoginSerializer
+
+
+from django.contrib.auth import login
+from drf_yasg.utils import swagger_auto_schema
 
 
 # Home Page
@@ -14,171 +19,103 @@ def home(request):
     return render(request, 'group1.html', {'group_number': '1'})
 
 # User Management APIs
+@swagger_auto_schema(method='post', request_body=UserSerializer)
 @api_view(['POST'])
 def register(request):
     """
     User registration API.
-    ---
-    parameters:
-      - name: username
-        type: string
-        required: true
-      - name: password
-        type: string
-        required: true
-      - name: phone_number
-        type: string
-        required: true
-      - name: mother_language
-        type: string
-        required: true
-      - name: target_language
-        type: string
-        required: true
-      - name: language_level
-        type: string
-        required: true
-    responses:
-      200:
-        description: User registered successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "User registered successfully"
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "Invalid request"
+    URL: /register/
+    Method: POST
+    Payload: {
+        "username": "string",
+        "password": "string",
+        "profile": {
+            "phone_number": "string",
+            "mother_language": "string",
+            "target_language": "string",
+            "language_level": "string",
+            "avatar": "file",
+            "status": "string"
+        }
+    }
+    Response: {
+        "message": "User registered successfully",
+        "status": 201
+    }
     """
     if request.method == 'POST':
-        username = request.data.get('username')
-        password = request.data.get('password')
-        phone_number = request.data.get('phone_number')
-        mother_language = request.data.get('mother_language')
-        target_language = request.data.get('target_language')
-        language_level = request.data.get('language_level')
-
-        user = User.objects.create_user(username=username, password=password)
-        UserProfile.objects.create(
-            user=user,
-            phone_number=phone_number,
-            mother_language=mother_language,
-            target_language=target_language,
-            language_level=language_level,
-        )
-        return Response({'message': 'User registered successfully'}, status=status.HTTP_201_CREATED)
-    return Response({'error': 'Invalid request'}, status=status.HTTP_400_BAD_REQUEST)
-
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'User registered successfully'}, status=status.HTTP_201_CREATED)
+        return Response({'error': 'Invalid request', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 # Login API
+@swagger_auto_schema(method='post', request_body=LoginSerializer)
 @api_view(['POST'])
 def login_user(request):
     """
     User login API.
-    ---
-    parameters:
-      - name: username
-        type: string
-        required: true
-      - name: password
-        type: string
-        required: true
-    responses:
-      200:
-        description: User logged in successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "User logged in successfully"
-      401:
-        description: Invalid credentials
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "Invalid credentials"
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "Invalid request"
+    URL: /login/
+    Method: POST
+    Payload: {
+        "username": "string",
+        "password": "string"
+    }
+    Response: {
+        "message": "User logged in successfully",
+        "status": 200
+    }
     """
     if request.method == 'POST':
-        username = request.data.get('username')
-        password = request.data.get('password')
-        user = authenticate(request, username=username, password=password)
-        if user:
-            login(request, user)
-            return Response({'message': 'User logged in successfully'})
-        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-    return Response({'error': 'Invalid request'}, status=status.HTTP_400_BAD_REQUEST)
-
+        try:
+            serializer = LoginSerializer(data=request.data)
+            if serializer.is_valid():
+                user = authenticate(
+                    username=serializer.validated_data['username'],
+                    password=serializer.validated_data['password']
+                )
+                if user is not None:
+                    login(request, user)  # Login the user
+                    return Response({'message': 'User logged in successfully'}, status=status.HTTP_200_OK)
+                return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Logout API
+@swagger_auto_schema(method='post')
 @api_view(['POST'])
 def logout_user(request):
     """
     User logout API.
-    ---
-    responses:
-      200:
-        description: User logged out successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "User logged out successfully"
+    URL: /logout/
+    Method: POST
+    Response: {
+        "message": "User logged out successfully",
+        "status": 200
+    }
     """
     logout(request)
     return Response({'message': 'User logged out successfully'}, status=status.HTTP_200_OK)
 
-
 # Edit Profile API
+@swagger_auto_schema(method='post', request_body=UserProfileSerializer)
 @api_view(['POST'])
 def edit_profile(request):
     """
     Edit user profile API.
-    ---
-    parameters:
-      - name: mother_language
-        type: string
-        required: false
-      - name: target_language
-        type: string
-        required: false
-      - name: language_level
-        type: string
-        required: false
-    responses:
-      200:
-        description: Profile updated successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "Profile updated successfully"
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "Invalid request"
+    URL: /edit_profile/
+    Method: POST
+    Payload: {
+        "mother_language": "string",
+        "target_language": "string",
+        "language_level": "string"
+    }
+    Response: {
+        "message": "Profile updated successfully",
+        "status": 200
+    }
     """
     if request.method == 'POST':
         user_profile = UserProfile.objects.get(user=request.user)
@@ -186,136 +123,85 @@ def edit_profile(request):
         user_profile.target_language = request.data.get('target_language', user_profile.target_language)
         user_profile.language_level = request.data.get('language_level', user_profile.language_level)
         user_profile.save()
-        return Response({'message': 'Profile updated successfully'})
+        return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
     return Response({'error': 'Invalid request'}, status=status.HTTP_400_BAD_REQUEST)
-
 # Private Chat APIs
 
 # Private Chat APIs
 
+# Private Chat API - Create Private Chat
+@swagger_auto_schema(method='post', request_body=PrivateChatSerializer)
 @api_view(['POST'])
 def create_private_chat(request):
     """
-    Create a private chat between two users.
-    ---
-    parameters:
-      - name: user2_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Private chat created successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "Private chat created"
-            chat_id:
-              type: integer
-              example: 1
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "User not found"
+    Create a private chat API.
+    URL: /create_private_chat/
+    Method: POST
+    Payload: {
+        "user2_id": "integer"
+    }
+    Response: {
+        "message": "Private chat created",
+        "chat_id": "integer",
+        "status": 201
+    }
     """
-    user2_id = request.data.get('user2_id')
-    try:
-        user2 = User.objects.get(id=user2_id)
-        chat = PrivateChat.objects.create(user1=request.user, user2=user2)
-        return Response({'message': 'Private chat created', 'chat_id': chat.id}, status=status.HTTP_201_CREATED)
-    except User.DoesNotExist:
-        return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.method == 'POST':
+        user2_id = request.data.get('user2_id')
+        try:
+            user2 = User.objects.get(id=user2_id)
+            chat = PrivateChat.objects.create(user1=request.user, user2=user2)
+            return Response({'message': 'Private chat created', 'chat_id': chat.id}, status=status.HTTP_201_CREATED)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
 
-
+@swagger_auto_schema(method='post', request_body=MessageSerializer)
 @api_view(['POST'])
 def send_private_message(request):
     """
-    Send a private message in an existing chat.
-    ---
-    parameters:
-      - name: chat_id
-        type: integer
-        required: true
-      - name: text
-        type: string
-        required: true
-    responses:
-      200:
-        description: Message sent successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "Message sent"
-            message_id:
-              type: integer
-              example: 1
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "Chat not found"
+    Send a private message API.
+    URL: /send_private_message/
+    Method: POST
+    Payload: {
+        "chat_id": "integer",
+        "text": "string"
+    }
+    Response: {
+        "message": "Message sent",
+        "message_id": "integer",
+        "status": 201
+    }
     """
-    chat_id = request.data.get('chat_id')
-    text = request.data.get('text')
+    if request.method == 'POST':
+        chat_id = request.data.get('chat_id')
+        text = request.data.get('text')
 
-    try:
-        chat = PrivateChat.objects.get(id=chat_id)
-        message = Message.objects.create(sender=request.user, private_chat=chat, text=text)
-        return Response({'message': 'Message sent', 'message_id': message.id}, status=status.HTTP_201_CREATED)
-    except PrivateChat.DoesNotExist:
-        return Response({'error': 'Chat not found'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            chat = PrivateChat.objects.get(id=chat_id)
+            message = Message.objects.create(sender=request.user, private_chat=chat, text=text)
+            return Response({'message': 'Message sent', 'message_id': message.id}, status=status.HTTP_201_CREATED)
+        except PrivateChat.DoesNotExist:
+            return Response({'error': 'Chat not found'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@swagger_auto_schema(method='get', responses={200: 'OK'})
 @api_view(['GET'])
 def get_single_chat(request, chat_id):
     """
-    Get all messages from a single private chat.
-    ---
-    parameters:
-      - name: chat_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Messages retrieved successfully
-        schema:
-          type: object
-          properties:
-            messages:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                    example: 1
-                  sender:
-                    type: string
-                    example: "user1"
-                  text:
-                    type: string
-                    example: "Hello!"
-                  created_at:
-                    type: string
-                    example: "2023-10-05T15:30:00Z"
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "You are not part of this chat"
+    Get messages from a single private chat.
+    URL: /private-chat/{chat_id}/
+    Method: GET
+    Params: chat_id (path param)
+    Response: {
+        "messages": [
+            {
+                "id": "int",
+                "sender__username": "string",
+                "text": "string",
+                "created_at": "datetime"
+            }
+        ]
+    }
     """
     chat = PrivateChat.objects.filter(id=chat_id, user1=request.user) | PrivateChat.objects.filter(id=chat_id, user2=request.user)
     
@@ -325,41 +211,21 @@ def get_single_chat(request, chat_id):
     messages = Message.objects.filter(private_chat=chat.first()).values('id', 'sender__username', 'text', 'created_at')
     return Response({'messages': list(messages)}, status=status.HTTP_200_OK)
 
-
-# Group Chat APIs
-
+@swagger_auto_schema(method='post', request_body=GroupCreateSerializer)
 @api_view(['POST'])
 def create_group(request):
     """
-    Create a new group chat.
-    ---
-    parameters:
-      - name: name
-        type: string
-        required: true
-      - name: description
-        type: string
-        required: true
-    responses:
-      200:
-        description: Group created successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "Group created"
-            group_id:
-              type: integer
-              example: 1
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "Invalid request"
+    Create a new group.
+    URL: /create-group/
+    Method: POST
+    Payload: {
+        "name": "string",
+        "description": "string"
+    }
+    Response: {
+        "message": "Group created",
+        "group_id": "int"
+    }
     """
     name = request.data.get('name')
     description = request.data.get('description')
@@ -371,38 +237,20 @@ def create_group(request):
     GroupMembership.objects.create(group=group, user=request.user, role=GroupRole.ADMIN)
     return Response({'message': 'Group created', 'group_id': group.id}, status=status.HTTP_201_CREATED)
 
+@swagger_auto_schema(method='post', request_body=GroupMessageSerializer)
 @api_view(['POST'])
 def send_group_message(request, group_id):
     """
-    Send a message in a group chat.
-    ---
-    parameters:
-      - name: group_id
-        type: integer
-        required: true
-      - name: text
-        type: string
-        required: true
-    responses:
-      200:
-        description: Message sent successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "Message sent"
-            message_id:
-              type: integer
-              example: 1
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "You are not a member of this group"
+    Send a message to a group.
+    URL: /send-group-message/{group_id}/
+    Method: POST
+    Payload: {
+        "text": "string"
+    }
+    Response: {
+        "message": "Message sent",
+        "message_id": "int"
+    }
     """
     try:
         group = Group.objects.get(id=group_id)
@@ -416,180 +264,122 @@ def send_group_message(request, group_id):
     except Group.DoesNotExist:
         return Response({'error': 'Group not found'}, status=status.HTTP_400_BAD_REQUEST)
 
-
+@swagger_auto_schema(method='post', request_body=AddGroupMemberSerializer)
 @api_view(['POST'])
 def add_group_member(request, group_id):
     """
-    Add a member to a group chat.
-    ---
-    parameters:
-      - name: group_id
-        type: integer
-        required: true
-      - name: user_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Member added successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "Member added successfully"
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "You do not have permission to add members"
+    Add a new member to a group.
+    URL: /groups/{group_id}/add_member/
+    Method: POST
+    Payload: {
+        "user_id": "integer"
+    }
+    Response: {
+        "message": "Member added successfully",
+        "status": 201
+    }
     """
     try:
         group = Group.objects.get(id=group_id)
         membership = GroupMembership.objects.filter(group=group, user=request.user).first()
-        if not membership or membership.role != GroupRole.ADMIN:
+        if not membership or membership.role != 'admin':
             raise PermissionDenied("You do not have permission to add members.")
         
-        user_id = request.data.get('user_id')
-        user = User.objects.get(id=user_id)
-        GroupMembership.objects.create(group=group, user=user)
-        return Response({'message': 'Member added successfully'}, status=status.HTTP_201_CREATED)
+        serializer = AddGroupMemberSerializer(data=request.data)
+        if serializer.is_valid():
+            user_id = serializer.validated_data['user_id']
+            user = User.objects.get(id=user_id)
+            GroupMembership.objects.create(group=group, user=user)
+            return Response({'message': 'Member added successfully'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
     except Group.DoesNotExist:
         return Response({'error': 'Group not found'}, status=status.HTTP_400_BAD_REQUEST)
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@swagger_auto_schema(method='post', request_body=RemoveGroupMemberSerializer)
 @api_view(['POST'])
 def remove_group_member(request, group_id):
     """
-    Remove a member from a group chat.
-    ---
-    parameters:
-      - name: group_id
-        type: integer
-        required: true
-      - name: user_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Member removed successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "Member removed successfully"
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "You do not have permission to remove members"
+    Remove a member from a group.
+    URL: /groups/{group_id}/remove_member/
+    Method: POST
+    Payload: {
+        "user_id": "integer"
+    }
+    Response: {
+        "message": "Member removed successfully",
+        "status": 200
+    }
     """
     try:
         group = Group.objects.get(id=group_id)
         membership = GroupMembership.objects.filter(group=group, user=request.user).first()
-        if not membership or membership.role != GroupRole.ADMIN:
+        if not membership or membership.role != 'admin':
             raise PermissionDenied("You do not have permission to remove members.")
         
-        user_id = request.data.get('user_id')
-        user = User.objects.get(id=user_id)
-        GroupMembership.objects.filter(group=group, user=user).delete()
-        return Response({'message': 'Member removed successfully'}, status=status.HTTP_200_OK)
+        serializer = RemoveGroupMemberSerializer(data=request.data)
+        if serializer.is_valid():
+            user_id = serializer.validated_data['user_id']
+            user = User.objects.get(id=user_id)
+            GroupMembership.objects.filter(group=group, user=user).delete()
+            return Response({'message': 'Member removed successfully'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
     except Group.DoesNotExist:
         return Response({'error': 'Group not found'}, status=status.HTTP_400_BAD_REQUEST)
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
 
-
 # Language Partner Matching API
-
+@swagger_auto_schema(method='get', request_body=LanguagePartnerSearchSerializer)
 @api_view(['GET'])
 def search_language_partners(request):
     """
-    Search for language partners based on language and level.
-    ---
-    parameters:
-      - name: language
-        type: string
-        required: true
-      - name: level
-        type: string
-        required: true
-    responses:
-      200:
-        description: Language partners found
-        schema:
-          type: object
-          properties:
-            partners:
-              type: array
-              items:
-                type: object
-                properties:
-                  username:
-                    type: string
-                    example: "john_doe"
-                  id:
-                    type: integer
-                    example: 1
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "No partners found"
+    Search for available language partners based on target language and level.
+    URL: /language_partners/search/
+    Method: GET
+    Query Parameters: 
+        language: "string"
+        level: "string"
+    Response: {
+        "partners": [{"username": "string", "id": "integer"}],
+        "status": 200
+    }
     """
-    language = request.GET.get('language')
-    level = request.GET.get('level')
+    serializer = LanguagePartnerSearchSerializer(data=request.query_params)
+    if serializer.is_valid():
+        language = serializer.validated_data['language']
+        level = serializer.validated_data['level']
 
-    partners = LanguagePartner.objects.filter(
-        user__profile__target_language=language,
-        user__profile__language_level=level,
-        is_available=True,
-    )
-    
-    if partners.exists():
-        data = [{'username': partner.user.username, 'id': partner.user.id} for partner in partners]
-        return Response({'partners': data}, status=status.HTTP_200_OK)
-    else:
+        partners = LanguagePartner.objects.filter(
+            user__profile__target_language=language,
+            user__profile__language_level=level,
+            is_available=True,
+        )
+
+        if partners.exists():
+            data = [{'username': partner.user.username, 'id': partner.user.id} for partner in partners]
+            return Response({'partners': data}, status=status.HTTP_200_OK)
         return Response({'error': 'No partners found'}, status=status.HTTP_400_BAD_REQUEST)
 
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+@swagger_auto_schema(method='post')
 @api_view(['POST'])
 def send_partner_request(request):
     """
     Send a friend request to another user.
-    ---
-    parameters:
-      - name: receiver_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Request sent successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "Request sent"
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "User not found"
+    URL: /send_partner_request/
+    Method: POST
+    Payload: {
+        "receiver_id": "integer"
+    }
+    Response: {
+        "message": "Request sent",
+        "status": 201
+    }
     """
     try:
         receiver_id = request.data.get('receiver_id')
@@ -599,33 +389,20 @@ def send_partner_request(request):
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
 
-
+@swagger_auto_schema(method='post')
 @api_view(['POST'])
 def accept_partner_request(request):
     """
     Accept a pending friend request.
-    ---
-    parameters:
-      - name: request_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Friend request accepted successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "Friend request accepted"
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "Friend request not found or invalid"
+    URL: /accept_partner_request/
+    Method: POST
+    Payload: {
+        "request_id": "integer"
+    }
+    Response: {
+        "message": "Friend request accepted",
+        "status": 200
+    }
     """
     try:
         request_id = request.data.get('request_id')
@@ -635,39 +412,23 @@ def accept_partner_request(request):
         return Response({'message': 'Friend request accepted'}, status=status.HTTP_200_OK)
     except FriendRequest.DoesNotExist:
         return Response({'error': 'Friend request not found or invalid'}, status=status.HTTP_400_BAD_REQUEST)
-
-
 # Reporting and Blocking APIs
 
+@swagger_auto_schema(method='post')
 @api_view(['POST'])
 def report_user(request):
     """
     Report a user for inappropriate behavior.
-    ---
-    parameters:
-      - name: reported_user_id
-        type: integer
-        required: true
-      - name: reason
-        type: string
-        required: true
-    responses:
-      200:
-        description: User reported successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "User reported"
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "User not found"
+    URL: /report_user/
+    Method: POST
+    Payload: {
+        "reported_user_id": "integer",
+        "reason": "string"
+    }
+    Response: {
+        "message": "User reported",
+        "status": 201
+    }
     """
     try:
         reported_user_id = request.data.get('reported_user_id')
@@ -677,34 +438,20 @@ def report_user(request):
         return Response({'message': 'User reported'}, status=status.HTTP_201_CREATED)
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
-
-
+@swagger_auto_schema(method='post')
 @api_view(['POST'])
 def block_user(request):
     """
-    Block a user to prevent further interactions.
-    ---
-    parameters:
-      - name: blocked_user_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: User blocked successfully
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: "User blocked"
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "User not found"
+    Block a user from interacting with the current user.
+    URL: /block_user/
+    Method: POST
+    Payload: {
+        "blocked_user_id": "integer"
+    }
+    Response: {
+        "message": "User blocked",
+        "status": 201
+    }
     """
     try:
         blocked_user_id = request.data.get('blocked_user_id')
@@ -713,179 +460,98 @@ def block_user(request):
         return Response({'message': 'User blocked'}, status=status.HTTP_201_CREATED)
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
-
 # User Retrieval APIs
+@swagger_auto_schema(method='get')
 @api_view(['GET'])
 def get_all_users(request):
     """
     Get a list of all users with basic profile information.
-    ---
-    responses:
-      200:
-        description: List of all users
-        schema:
-          type: object
-          properties:
-            users:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                  username:
-                    type: string
-                  profile:
-                    type: object
-                    properties:
-                      avatar:
-                        type: string
-                      phone_number:
-                        type: string
+    URL: /get_all_users/
+    Method: GET
+    Response: {
+        "users": [
+            {
+                "id": "integer",
+                "username": "string",
+                "profile__avatar": "string",
+                "profile__phone_number": "string"
+            }
+        ]
+    }
     """
     users = User.objects.all().values('id', 'username', 'profile__avatar', 'profile__phone_number')
     return Response({'users': list(users)}, status=status.HTTP_200_OK)
-
-
+@swagger_auto_schema(method='get')
 @api_view(['GET'])
 def get_single_user(request, user_id):
     """
-    Get detailed information of a single user.
-    ---
-    parameters:
-      - name: user_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: User found successfully
-        schema:
-          type: object
-          properties:
-            user:
-              type: object
-              properties:
-                id:
-                  type: integer
-                username:
-                  type: string
-                profile:
-                  type: object
-                  properties:
-                    avatar:
-                      type: string
-                    phone_number:
-                      type: string
-                    mother_language:
-                      type: string
-                    target_language:
-                      type: string
-      404:
-        description: User not found
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "User not found"
+    Get details of a single user by their user ID.
+    URL: /get_single_user/{user_id}/
+    Method: GET
+    Response: {
+        "user": {
+            "id": "integer",
+            "username": "string",
+            "profile_avatar": "string",
+            "profile_phone_number": "string",
+            "profile_mother_language": "string",
+            "profile_target_language": "string"
+        }
+    }
     """
     user = User.objects.filter(id=user_id).values('id', 'username', 'profile__avatar', 'profile__phone_number', 'profile__mother_language', 'profile__target_language').first()
     if not user:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
     return Response({'user': user}, status=status.HTTP_200_OK)
 
-
-# Chat Retrieval APIs
-
+@swagger_auto_schema(method='get', responses={200: PrivateChatSerializer(many=True)})
 @api_view(['GET'])
 def get_all_chats(request):
     """
-    Get a list of all chats for the logged-in user.
-    ---
-    responses:
-      200:
-        description: List of all chats
-        schema:
-          type: object
-          properties:
-            chats:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                  user1:
-                    type: string
-                  user2:
-                    type: string
+    Get a list of all chats for the current user.
+    URL: /get_all_chats/
+    Method: GET
+    Response: {
+        "chats": [
+            {
+                "id": "integer",
+                "user1": "string",
+                "user2": "string"
+            }
+        ]
+    }
     """
     chats = PrivateChat.objects.filter(user1=request.user) | PrivateChat.objects.filter(user2=request.user)
     data = [{'id': chat.id, 'user1': chat.user1.username, 'user2': chat.user2.username} for chat in chats]
     return Response({'chats': data}, status=status.HTTP_200_OK)
 
-
-# Additional API
-
+@swagger_auto_schema(method='get')
 @api_view(['GET'])
 def get_user_avatar(request, user_id):
     """
-    Get the avatar of a user.
-    ---
-    parameters:
-      - name: user_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Avatar URL of the user
-        schema:
-          type: object
-          properties:
-            avatar:
-              type: string
-      404:
-        description: User not found
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "User not found"
+    Get the avatar of a user by their user ID.
+    URL: /get_user_avatar/{user_id}/
+    Method: GET
+    Response: {
+        "avatar": "string"
+    }
     """
     user_profile = UserProfile.objects.filter(user_id=user_id).first()
     if not user_profile:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
     return Response({'avatar': user_profile.avatar.url if user_profile.avatar else None}, status=status.HTTP_200_OK)
+@swagger_auto_schema(method='get')
 @api_view(['GET'])
 def get_user_details(request, user_id):
     """
-    Get user details including username, avatar, and phone number.
-    ---
-    parameters:
-      - name: user_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: User details found
-        schema:
-          type: object
-          properties:
-            username:
-              type: string
-            avatar:
-              type: string
-            phone_number:
-              type: string
-      404:
-        description: User not found
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "User not found"
+    Get the details of a user by their user ID.
+    URL: /get_user_details/{user_id}/
+    Method: GET
+    Response: {
+        "username": "string",
+        "avatar": "string",
+        "phone_number": "string"
+    }
     """
     user_profile = UserProfile.objects.filter(user_id=user_id).first()
     if not user_profile:
@@ -898,35 +564,16 @@ def get_user_details(request, user_id):
 
 
 # Message APIs
-
+@swagger_auto_schema(method='delete', responses={200})
 @api_view(['DELETE'])
 def delete_message(request, message_id):
     """
-    Delete a specific message if the requester is the sender.
-    ---
-    parameters:
-      - name: message_id
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Message deleted successfully
-      404:
-        description: Message not found
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "Message not found"
-      403:
-        description: Unauthorized to delete message
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "You are not authorized to delete this message."
+    Delete a message if the user is the sender.
+    URL: /delete_message/{message_id}/
+    Method: DELETE
+    Response: {
+        "message": "Message deleted successfully"
+    }
     """
     try:
         message = Message.objects.get(id=message_id)
@@ -937,47 +584,19 @@ def delete_message(request, message_id):
     except Message.DoesNotExist:
         return Response({'error': 'Message not found'}, status=status.HTTP_404_NOT_FOUND)
 
-
+@swagger_auto_schema(method='post')
 @api_view(['POST'])
 def edit_message(request, message_id):
     """
-    Edit a specific message if the requester is the sender.
-    ---
-    parameters:
-      - name: message_id
-        type: integer
-        required: true
-      - name: text
-        type: string
-        required: true
-        description: New message text
-    responses:
-      200:
-        description: Message edited successfully
-      400:
-        description: Message text cannot be empty
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "Message text cannot be empty"
-      404:
-        description: Message not found
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "Message not found"
-      403:
-        description: Unauthorized to edit message
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              example: "You are not authorized to edit this message."
+    Edit a message if the user is the sender.
+    URL: /edit_message/{message_id}/
+    Method: POST
+    Payload: {
+        "text": "string"
+    }
+    Response: {
+        "message": "Message edited successfully"
+    }
     """
     try:
         message = Message.objects.get(id=message_id)
