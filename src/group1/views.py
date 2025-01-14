@@ -52,6 +52,7 @@ def register(request):
 
 # Login API
 @swagger_auto_schema(method='post', request_body=LoginSerializer)
+@api_view(['POST'])
 def login_user(request):
     """
     User login API.
@@ -81,7 +82,6 @@ def login_user(request):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 # Logout API
 @swagger_auto_schema(method='post')
