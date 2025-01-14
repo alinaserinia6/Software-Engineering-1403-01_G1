@@ -10,6 +10,7 @@ from django.urls import reverse
 
 # Home Page
 
+# Home Page
 def home(request):
     return render(request, 'group1.html', {'group_number': '1'})
 

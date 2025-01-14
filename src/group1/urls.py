@@ -48,5 +48,4 @@ urlpatterns = [
 
     # Home Page
     path('', views.home, name='group1'),
-
 ]
