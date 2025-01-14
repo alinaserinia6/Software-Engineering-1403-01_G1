@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     'group8',
     'group9',
     'registration',
+    'rest_framework',
+    'drf_yasg'
 
 ]
 
