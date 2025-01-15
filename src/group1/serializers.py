@@ -91,13 +91,17 @@ class UserSerializer(serializers.ModelSerializer):
         UserProfile.objects.create(user=user, **profile_data)
         return user
 
-
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
+        # Use authenticate to validate user
         user = authenticate(username=data['username'], password=data['password'])
+        
+        # Check if user exists, if not raise validation error
         if not user:
             raise serializers.ValidationError("Invalid credentials")
+        
+        # Return the user object (this will be passed to the view)
         return user

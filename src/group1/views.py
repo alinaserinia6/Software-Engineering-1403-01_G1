@@ -69,19 +69,25 @@ def login_user(request):
     """
     if request.method == 'POST':
         try:
+            # Serialize the input data
             serializer = LoginSerializer(data=request.data)
+            
+            # Validate the serializer
             if serializer.is_valid():
-                user = authenticate(
-                    username=serializer.validated_data['username'],
-                    password=serializer.validated_data['password']
-                )
-                if user is not None:
-                    login(request, user)  # Login the user
-                    return Response({'message': 'User logged in successfully'}, status=status.HTTP_200_OK)
-                return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+                user = serializer.validated_data  # This will be the user object returned by validate()
+
+                # If the user is found, login the user
+                login(request, user)
+                
+                return Response({'message': 'User logged in successfully'}, status=status.HTTP_200_OK)
+            
+            # If the serializer is invalid, return errors
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 # Logout API
 @swagger_auto_schema(method='post')
