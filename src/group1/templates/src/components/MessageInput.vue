@@ -3,12 +3,24 @@
     <q-btn icon="mic" class="icon-button" @click="startRecording" />
     <q-btn icon="attach_file" class="icon-button" @click="attachFile" />
     <input class="chat-input" type="text" placeholder="Type a message..." />
-    <q-btn icon="send" class="send-button" @click="send" />
+    <q-btn icon="send" class="send-button" @click="send" @keyup.enter="sendMessage" />
   </div>
 </template>
 
 <script setup>
 import { defineProps } from 'vue';
+import { ref } from 'vue'
+
+const message = ref('')
+const emit = defineEmits(['sendMessage'])
+
+// Send a message
+function sendMessage() {
+  if (message.value.trim()) {
+    emit('sendMessage', message.value)
+    message.value = ''
+  }
+}
 
 // Accept drawer state as a prop
 defineProps({

@@ -21,7 +21,7 @@
           <q-item-section>{{ chat.title }}</q-item-section>
         </q-item>
         <q-item>
-          <h1>salam</h1>
+          <h1>chat list</h1>
         </q-item>
       </q-list>
       </q-drawer>
