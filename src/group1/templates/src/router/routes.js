@@ -6,7 +6,7 @@ const routes = [
       { path: '', name : 'login' , component: () => import('src/pages/LoginPage.vue') },
       { path: 'SignUp', name : 'signup' , component: () => import('src/pages/SingupPage.vue') },
       { path: 'PartnerList', name : 'partnerlist' , component: () => import('src/pages/PartnerList.vue') },
-      { path: 'ChatRoom', name : 'chatroom' , component: () => import('src/pages/ChatRoom.vue') }
+      { path: 'ChatRoom/:partnerId', name : 'chatroom' , component: () => import('src/pages/ChatRoom.vue') }
     ]
   },
 

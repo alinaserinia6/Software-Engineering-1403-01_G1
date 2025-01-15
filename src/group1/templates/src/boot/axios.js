@@ -3,9 +3,10 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: 'http://127.0.0.1:8000/group1/',
+  withCredentials: true, // Include cookies (important for CSRF)
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/x-www-form-urlencoded',
+  },
 })
 
 export default boot(({ app, store, router }) => {
